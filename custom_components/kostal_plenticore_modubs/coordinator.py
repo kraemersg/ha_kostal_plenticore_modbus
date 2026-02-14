@@ -83,7 +83,7 @@ class InverterCoordinator(DataUpdateCoordinator):
         }
 
         # Optimized read plan (<=125 regs each). Covers:
-        # - inverter_state (56..57) + all sensors/numbers used by this integration incl. modbus_wichtig.xlsx set
+        # - inverter_state (56..57) + all sensors/numbers used by this integration
 
         READ_BLOCKS: Final[list[tuple[int, int]]] = [
                 (56, 2),  # inverter state (uint32 via word-swap)
@@ -93,7 +93,7 @@ class InverterCoordinator(DataUpdateCoordinator):
                 (194, 94),  # 194..287  (battery/house/grid + DC currents/powers/voltages)
                 (320, 8),  # 320..327  (yields)
                 (512, 18),  # 512..529  (battery SOC etc.)
-                (1024, 8),  # 1024..1031 (charge setpoint + scale factor + charge power number @1030)
+                # (1024, 8),  # 1024..1031 (charge setpoint + scale factor + charge power number @1030)
                 (1042, 38),  # 1042..1079 (min/max soc + totals + battery work cap + max ch/disch)
         ]
 
