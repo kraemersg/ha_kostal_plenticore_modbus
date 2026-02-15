@@ -88,6 +88,7 @@ class RegisterInfo():
 
 REGISTERS: list[RegisterInfo] = [
     # --- curated via modbus_wichtig.xlsx (types/lengths from KOSTAL_Register.py) ---
+    RegisterInfo(98, "controller_temperature", "Temperature of controller PCB", "°C", "Float", "mdi:thermometer", SensorDeviceClass.TEMPERATURE, 1, "RO", SensorStateClass.MEASUREMENT),
     RegisterInfo(100, "total_dc_power", "Total DC power", "W", "Float", "mdi:flash", SensorDeviceClass.POWER, 0, "RO", SensorStateClass.MEASUREMENT),
     RegisterInfo(106, "consumption_battery", "Home own consumption from battery", "W", "Float", "mdi:flash", SensorDeviceClass.POWER, 0, "RO", SensorStateClass.MEASUREMENT),
     RegisterInfo(108, "consumption_grid", "Home own consumption from grid", "W", "Float", "mdi:flash", SensorDeviceClass.POWER, 0, "RO", SensorStateClass.MEASUREMENT),
@@ -133,12 +134,12 @@ REGISTERS: list[RegisterInfo] = [
     RegisterInfo(326, "monthly_yield", "Monthly yield", "Wh", "Float", "mdi:flash", SensorDeviceClass.ENERGY, 0, "RO", SensorStateClass.TOTAL),
 
     RegisterInfo(514, "battery_actual_soc", "Battery actual SOC", "%", "U16", "mdi:battery", SensorDeviceClass.BATTERY, 0, "RO", SensorStateClass.MEASUREMENT),
+    # RegisterInfo(529, "battery_work_capacity", "Battery Work Capacity", "Wh", "U32", "mdi:battery", SensorDeviceClass.BATTERY,0, "RO", SensorStateClass.MEASUREMENT),
 
-    RegisterInfo(582, "actual_battery_charge_power", "Actual battery charge/discharge power", "W", "Float", "mdi:flash", SensorDeviceClass.POWER, 0, "RO",
-                 SensorStateClass.MEASUREMENT),
+    # RegisterInfo(582, "actual_battery_charge_power", "Actual battery charge/discharge power", "W", "Float", "mdi:flash", SensorDeviceClass.POWER, 0, "RO", SensorStateClass.MEASUREMENT),
 
-    RegisterInfo(1042, "minimum_soc", "Minimum SOC", "%", "Float", "mdi:battery-10", SensorDeviceClass.BATTERY, 0, "RO", SensorStateClass.MEASUREMENT),
-    RegisterInfo(1044, "maximum_soc", "Maximum SOC", "%", "Float", "mdi:battery-90", SensorDeviceClass.BATTERY, 0, "RO", SensorStateClass.MEASUREMENT),
+    RegisterInfo(1042, "minimum_soc", "Minimum SOC", "%", "Float", "mdi:battery-10", SensorDeviceClass.BATTERY, 0, "RW", SensorStateClass.MEASUREMENT),
+    RegisterInfo(1044, "maximum_soc", "Maximum SOC", "%", "Float", "mdi:battery-90", SensorDeviceClass.BATTERY, 0, "RW", SensorStateClass.MEASUREMENT),
 	
     RegisterInfo(1046, "total_ac_charge_energy_DC_to_battery", "Total DC charge energy (DC-side to battery)", "Wh", "Float", "mdi:flash", SensorDeviceClass.ENERGY, 0, "RO", SensorStateClass.TOTAL_INCREASING),
     RegisterInfo(1048, "total_ac_charge_energy_DC_from_battery", "Total DC discharge energy (DC-side from battery)", "Wh", "Float", "mdi:flash", SensorDeviceClass.ENERGY, 0, "RO", SensorStateClass.TOTAL_INCREASING),

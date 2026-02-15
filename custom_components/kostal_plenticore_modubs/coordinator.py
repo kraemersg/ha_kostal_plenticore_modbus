@@ -7,6 +7,9 @@ from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 import logging
 
+import asyncio
+
+
 from homeassistant.helpers.entity import Entity
 from homeassistant.const import PERCENTAGE
 
@@ -47,6 +50,7 @@ class InverterCoordinator(DataUpdateCoordinator):
         self._hass = hass
         self._entry = entry
         self._ip_address = ip_address
+        self._modbus_lock = asyncio.Lock()
 
         hass.data.setdefault(DOMAIN, {})
         hass.data[DOMAIN].setdefault(entry.entry_id, {
@@ -74,108 +78,118 @@ class InverterCoordinator(DataUpdateCoordinator):
         This is the place to pre-process the data to lookup tables
         so entities can quickly look up their data.
         """
+        async with self._modbus_lock:
 
-        client = AsyncModbusTcpClient(self._ip_address, port=1502)  # IP-Adresse und Port des Inverters
+            client = AsyncModbusTcpClient(self._ip_address, port=1502)  # IP-Adresse und Port des Inverters
 
-        data = {
-            "inverter_state": 18,
-            "registers": [0 for _ in range(1083)]
-        }
+            data = {
+                "inverter_state": 18,
+                "registers": [0 for _ in range(1083)]
+            }
 
-        # Optimized read plan (<=125 regs each). Covers:
-        # - inverter_state (56..57) + all sensors/numbers used by this integration
+            # Optimized read plan (<=125 regs each). Covers:
+            # - inverter_state (56..57) + all sensors/numbers used by this integration
 
-        READ_BLOCKS: Final[list[tuple[int, int]]] = [
-                (56, 2),  # inverter state (uint32 via word-swap)
-                (98, 22),  # 98..119  (controller temp + consumption/power/energy around 100..118)
-                (144, 2),  # worktime
-                (156, 18),  # 156..173  (AC power phases)
-                (194, 94),  # 194..287  (battery/house/grid + DC currents/powers/voltages)
-                (320, 8),  # 320..327  (yields)
-                (512, 18),  # 512..529  (battery SOC etc.)
-                (580, 18),  # 580..599  (battery charge power)
-                # (1024, 8),  # 1024..1031 (charge setpoint + scale factor + charge power number @1030)
-                (1042, 38),  # 1042..1079 (min/max soc + totals + battery work cap + max ch/disch)
-        ]
+            READ_BLOCKS: Final[list[tuple[int, int]]] = [
+                    (56, 2),  # inverter state (uint32 via word-swap)
+                    (98, 22),  # 98..119  (controller temp + consumption/power/energy around 100..118)
+                    (144, 2),  # worktime
+                    (156, 18),  # 156..173  (AC power phases)
+                    (194, 94),  # 194..287  (battery/house/grid + DC currents/powers/voltages)
+                    (320, 8),  # 320..327  (yields)
+                    (512, 18),  # 512..529  (battery SOC etc.)
+                    # (580, 18),  # 580..599  (battery charge power)
+                    # (1024, 8),  # 1024..1031 (charge setpoint + scale factor + charge power number @1030)
+                    (1042, 38),  # 1042..1079 (min/max soc + totals + battery work cap + max ch/disch)
+            ]
 
-        async def read_holding_registers(address, count):
-            result = await client.read_holding_registers(address, count=count, device_id=71)
-            if not result.isError():
-                data["registers"][address:address+count] = result.registers
-            else:
-                _LOGGER.error("Error reading registers: addr=%s count=%s", address, count)
+            async def read_holding_registers(address, count):
+                result = await client.read_holding_registers(address, count=count, device_id=71)
+                if not result.isError():
+                    data["registers"][address:address+count] = result.registers
+                else:
+                    _LOGGER.error("Error reading registers: addr=%s count=%s", address, count)
 
-        try:
-            connection = await client.connect()
+            try:
+                connection = await client.connect()
 
-            if connection:
-                for addr, cnt in READ_BLOCKS:
-                    await read_holding_registers(addr, cnt)
+                if connection:
+                    for addr, cnt in READ_BLOCKS:
+                        await read_holding_registers(addr, cnt)
+                        await asyncio.sleep(0.05)
 
-                # Inverter state decode from buffered registers (56..57) - word swap for CDAB
-                inv_regs = data["registers"][56:58]
-                data["inverter_state"] = client.convert_from_registers(
-                    registers = list(reversed(inv_regs)),
-                    data_type = client.DATATYPE.UINT32
-                )
+                    # Inverter state decode from buffered registers (56..57) - word swap for CDAB
+                    inv_regs = data["registers"][56:58]
+                    data["inverter_state"] = client.convert_from_registers(
+                        registers = list(reversed(inv_regs)),
+                        data_type = client.DATATYPE.UINT32
+                    )
 
-            else:
-                _LOGGER.error("Connection failed")
+                else:
+                    _LOGGER.error("Connection failed")
 
-        except ModbusException as e:
-            _LOGGER.error(f"Modbus error: {e}")
+            except ModbusException as e:
+                _LOGGER.error(f"Modbus error: {e}")
 
-        finally:
-            client.close()
+            finally:
+                client.close()
 
-        return data
+            return data
 
     async def async_set_min_soc(self, value: float) -> None:
         """set minimum soc"""        
         _LOGGER.warn("InverterCoordinator async_set_min_soc")
 
-        client = AsyncModbusTcpClient(self._ip_address, port=1502)  # IP-Adresse und Port des Inverters
+        async with self._modbus_lock:
 
-        try:
-            connection = await client.connect()
-            if connection:
+            client = AsyncModbusTcpClient(self._ip_address, port=1502)  # IP-Adresse und Port des Inverters
 
-                registers = client.convert_to_registers(value=value, data_type=client.DATATYPE.FLOAT32)
-                result = await client.write_registers(1042, values=list(reversed(registers)), slave=71)
-                if not result.isError():
-                    _LOGGER.error("Error writing registers")
+            try:
+                connection = await client.connect()
+                if connection:
 
-            else:
-                _LOGGER.error("Connection failed")
+                    registers = client.convert_to_registers(value=value, data_type=client.DATATYPE.FLOAT32)
+                    # Check!
+                    result = await client.write_registers(1042, values=list(reversed(registers)), device_id=71)
+                    # Check!
+                    if result.isError():
+                        _LOGGER.error("Error writing registers")
 
-        except ModbusException as e:
-            _LOGGER.error(f"Modbus error: {e}")
+                else:
+                    _LOGGER.error("Connection failed")
 
-        finally:
-            client.close()
+            except ModbusException as e:
+                _LOGGER.error(f"Modbus error: {e}")
+
+            finally:
+                client.close()
 
     async def async_set_float_value(self, address: int, value: float) -> None:
         """Set Float Value"""
-        
-        client = AsyncModbusTcpClient(self._ip_address, port=1502)  # IP-Adresse und Port des Inverters
 
-        try:
-            connection = await client.connect()
-            if connection:
+        async with self._modbus_lock:
 
-                registers = client.convert_to_registers(value=value, data_type=client.DATATYPE.FLOAT32)
-                result = await client.write_registers(1042, values=list(reversed(registers)), slave=71)
-                if not result.isError():
-                    _LOGGER.error("Error writing registers")
+            client = AsyncModbusTcpClient(self._ip_address, port=1502)  # IP-Adresse und Port des Inverters
 
-            else:
-                _LOGGER.error("Connection failed")
+            try:
+                connection = await client.connect()
+                if connection:
 
-        except ModbusException as e:
-            _LOGGER.error(f"Modbus error: {e}")
+                    registers = client.convert_to_registers(value=value, data_type=client.DATATYPE.FLOAT32)
+                    # Check!
+                    result = await client.write_registers(address, values=list(reversed(registers)), device_id=71)
+                    # Check!
+                    if result.isError():
+                        _LOGGER.error("Error writing registers")
 
-        finally:
-            client.close()
+                else:
+                    _LOGGER.error("Connection failed")
+
+            except ModbusException as e:
+                _LOGGER.error(f"Modbus error: {e}")
+
+            finally:
+                client.close()
 
     def read_float32(self, address: int) -> float:
         return AsyncModbusTcpClient.convert_from_registers(registers=list(reversed(self.data["registers"][address:address+2])), data_type=AsyncModbusTcpClient.DATATYPE.FLOAT32)
