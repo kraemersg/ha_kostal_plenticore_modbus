@@ -93,6 +93,7 @@ class InverterCoordinator(DataUpdateCoordinator):
                 (194, 94),  # 194..287  (battery/house/grid + DC currents/powers/voltages)
                 (320, 8),  # 320..327  (yields)
                 (512, 18),  # 512..529  (battery SOC etc.)
+                (580, 18),  # 580..599  (battery charge power)
                 # (1024, 8),  # 1024..1031 (charge setpoint + scale factor + charge power number @1030)
                 (1042, 38),  # 1042..1079 (min/max soc + totals + battery work cap + max ch/disch)
         ]

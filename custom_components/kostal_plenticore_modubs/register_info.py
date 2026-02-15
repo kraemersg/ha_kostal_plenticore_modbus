@@ -134,6 +134,9 @@ REGISTERS: list[RegisterInfo] = [
 
     RegisterInfo(514, "battery_actual_soc", "Battery actual SOC", "%", "U16", "mdi:battery", SensorDeviceClass.BATTERY, 0, "RO", SensorStateClass.MEASUREMENT),
 
+    RegisterInfo(582, "actual_battery_charge_power", "Actual battery charge/discharge power", "W", "Float", "mdi:flash", SensorDeviceClass.POWER, 0, "RO",
+                 SensorStateClass.MEASUREMENT),
+
     RegisterInfo(1042, "minimum_soc", "Minimum SOC", "%", "Float", "mdi:battery-10", SensorDeviceClass.BATTERY, 0, "RO", SensorStateClass.MEASUREMENT),
     RegisterInfo(1044, "maximum_soc", "Maximum SOC", "%", "Float", "mdi:battery-90", SensorDeviceClass.BATTERY, 0, "RO", SensorStateClass.MEASUREMENT),
 	
